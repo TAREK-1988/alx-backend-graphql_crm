@@ -2,46 +2,31 @@ import re
 from decimal import Decimal, InvalidOperation
 
 import graphene
-from django.utils import timezone
-from graphene import relay
 from graphene_django import DjangoObjectType
-from graphene_django.filter import DjangoFilterConnectionField
+from django.utils import timezone
 
-from .filters import CustomerFilter, ProductFilter, OrderFilter
 from .models import Customer, Product, Order
+
 
 PHONE_REGEX = re.compile(r"^(\+?\d[\d\-]{6,20})$")
 
 
-# =========================
-# GraphQL Types (Relay Nodes)
-# =========================
-
-
-class CustomerNode(DjangoObjectType):
+class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
-        interfaces = (relay.Node,)
-        filterset_class = CustomerFilter
+        fields = ("id", "name", "email", "phone")
 
 
-class ProductNode(DjangoObjectType):
+class ProductType(DjangoObjectType):
     class Meta:
         model = Product
-        interfaces = (relay.Node,)
-        filterset_class = ProductFilter
+        fields = ("id", "name", "price", "stock")
 
 
-class OrderNode(DjangoObjectType):
+class OrderType(DjangoObjectType):
     class Meta:
         model = Order
-        interfaces = (relay.Node,)
-        filterset_class = OrderFilter
-
-
-# =========================
-# Input Types for Mutations
-# =========================
+        fields = ("id", "customer", "products", "total_amount", "order_date")
 
 
 class CustomerInput(graphene.InputObjectType):
@@ -62,54 +47,17 @@ class OrderInput(graphene.InputObjectType):
     order_date = graphene.DateTime()
 
 
-# =========================
-# Input Types for Filters
-# (used in Query arguments)
-# =========================
-
-
-class CustomerFilterInput(graphene.InputObjectType):
-    name_icontains = graphene.String()
-    email_icontains = graphene.String()
-    created_at_gte = graphene.Date()
-    created_at_lte = graphene.Date()
-    phone_startswith = graphene.String()
-
-
-class ProductFilterInput(graphene.InputObjectType):
-    name_icontains = graphene.String()
-    price_gte = graphene.Float()
-    price_lte = graphene.Float()
-    stock_gte = graphene.Int()
-    stock_lte = graphene.Int()
-
-
-class OrderFilterInput(graphene.InputObjectType):
-    total_amount_gte = graphene.Float()
-    total_amount_lte = graphene.Float()
-    order_date_gte = graphene.Date()
-    order_date_lte = graphene.Date()
-    customer_name = graphene.String()
-    product_name = graphene.String()
-    product_id = graphene.ID()
-
-
-# =========================
-# Mutations
-# =========================
-
-
 class CreateCustomer(graphene.Mutation):
     class Arguments:
         input = CustomerInput(required=True)
 
-    customer = graphene.Field(CustomerNode)
+    customer = graphene.Field(CustomerType)
     message = graphene.String()
     errors = graphene.List(graphene.String)
 
     @classmethod
     def mutate(cls, root, info, input):
-        errors: list[str] = []
+        errors = []
 
         if Customer.objects.filter(email=input.email).exists():
             errors.append("Email already exists.")
@@ -138,16 +86,16 @@ class BulkCreateCustomers(graphene.Mutation):
     class Arguments:
         input = graphene.List(CustomerInput, required=True)
 
-    customers = graphene.List(CustomerNode)
+    customers = graphene.List(CustomerType)
     errors = graphene.List(graphene.String)
 
     @classmethod
     def mutate(cls, root, info, input):
-        created_customers: list[Customer] = []
-        errors: list[str] = []
+        created_customers = []
+        errors = []
 
         for index, customer_input in enumerate(input):
-            row_errors: list[str] = []
+            row_errors = []
 
             if Customer.objects.filter(email=customer_input.email).exists():
                 row_errors.append("Email already exists.")
@@ -157,9 +105,7 @@ class BulkCreateCustomers(graphene.Mutation):
                 row_errors.append("Invalid phone number format.")
 
             if row_errors:
-                errors.append(
-                    f"Row {index}: " + "; ".join(row_errors)
-                )
+                errors.append(f"Row {index}: " + "; ".join(row_errors))
                 continue
 
             customer = Customer.objects.create(
@@ -179,14 +125,14 @@ class CreateProduct(graphene.Mutation):
     class Arguments:
         input = ProductInput(required=True)
 
-    product = graphene.Field(ProductNode)
+    product = graphene.Field(ProductType)
     errors = graphene.List(graphene.String)
 
     @classmethod
     def mutate(cls, root, info, input):
-        errors: list[str] = []
+        errors = []
+        price_decimal = None
 
-        price_decimal: Decimal | None = None
         try:
             price_decimal = Decimal(str(input.price))
             if price_decimal <= 0:
@@ -214,12 +160,12 @@ class CreateOrder(graphene.Mutation):
     class Arguments:
         input = OrderInput(required=True)
 
-    order = graphene.Field(OrderNode)
+    order = graphene.Field(OrderType)
     errors = graphene.List(graphene.String)
 
     @classmethod
     def mutate(cls, root, info, input):
-        errors: list[str] = []
+        errors = []
 
         try:
             customer_id_int = int(input.customer_id)
@@ -229,10 +175,10 @@ class CreateOrder(graphene.Mutation):
             return CreateOrder(order=None, errors=errors)
 
         if not input.product_ids:
-            errors.append("At least one product must be provided.")
+            errors.append("At least one product must be selected.")
             return CreateOrder(order=None, errors=errors)
 
-        product_ids_int: list[int] = []
+        product_ids_int = []
         for pid in input.product_ids:
             try:
                 product_ids_int.append(int(pid))
@@ -259,11 +205,6 @@ class CreateOrder(graphene.Mutation):
         return CreateOrder(order=order, errors=[])
 
 
-# =========================
-# Root Mutation
-# =========================
-
-
 class Mutation(graphene.ObjectType):
     create_customer = CreateCustomer.Field()
     bulk_create_customers = BulkCreateCustomers.Field()
@@ -271,106 +212,8 @@ class Mutation(graphene.ObjectType):
     create_order = CreateOrder.Field()
 
 
-# =========================
-# Queries
-# =========================
-
-
 class Query(graphene.ObjectType):
-    hello = graphene.String(description="Simple greeting message.")
+    all_customers = graphene.List(CustomerType)
 
-    customer = relay.Node.Field(CustomerNode)
-    product = relay.Node.Field(ProductNode)
-    order = relay.Node.Field(OrderNode)
-
-    all_customers = DjangoFilterConnectionField(
-        CustomerNode,
-        filter=CustomerFilterInput(),
-        order_by=graphene.List(graphene.String),
-    )
-    all_products = DjangoFilterConnectionField(
-        ProductNode,
-        filter=ProductFilterInput(),
-        order_by=graphene.List(graphene.String),
-    )
-    all_orders = DjangoFilterConnectionField(
-        OrderNode,
-        filter=OrderFilterInput(),
-        order_by=graphene.List(graphene.String),
-    )
-
-    def resolve_hello(self, info, **kwargs) -> str:
-        return "Hello, GraphQL!"
-
-    def resolve_all_customers(self, info, filter=None, order_by=None, **kwargs):
-        queryset = Customer.objects.all()
-        filter_data = {}
-
-        if filter:
-            if filter.get("name_icontains"):
-                filter_data["name_icontains"] = filter["name_icontains"]
-            if filter.get("email_icontains"):
-                filter_data["email_icontains"] = filter["email_icontains"]
-            if filter.get("created_at_gte"):
-                filter_data["created_at_gte"] = filter["created_at_gte"]
-            if filter.get("created_at_lte"):
-                filter_data["created_at_lte"] = filter["created_at_lte"]
-            if filter.get("phone_startswith"):
-                filter_data["phone_startswith"] = filter["phone_startswith"]
-
-        queryset = CustomerFilter(data=filter_data, queryset=queryset).qs
-
-        if order_by:
-            queryset = queryset.order_by(*order_by)
-
-        return queryset
-
-    def resolve_all_products(self, info, filter=None, order_by=None, **kwargs):
-        queryset = Product.objects.all()
-        filter_data = {}
-
-        if filter:
-            if filter.get("name_icontains"):
-                filter_data["name_icontains"] = filter["name_icontains"]
-            if filter.get("price_gte") is not None:
-                filter_data["price_gte"] = filter["price_gte"]
-            if filter.get("price_lte") is not None:
-                filter_data["price_lte"] = filter["price_lte"]
-            if filter.get("stock_gte") is not None:
-                filter_data["stock_gte"] = filter["stock_gte"]
-            if filter.get("stock_lte") is not None:
-                filter_data["stock_lte"] = filter["stock_lte"]
-
-        queryset = ProductFilter(data=filter_data, queryset=queryset).qs
-
-        if order_by:
-            queryset = queryset.order_by(*order_by)
-
-        return queryset
-
-    def resolve_all_orders(self, info, filter=None, order_by=None, **kwargs):
-        queryset = Order.objects.all()
-        filter_data = {}
-
-        if filter:
-            if filter.get("total_amount_gte") is not None:
-                filter_data["total_amount_gte"] = filter["total_amount_gte"]
-            if filter.get("total_amount_lte") is not None:
-                filter_data["total_amount_lte"] = filter["total_amount_lte"]
-            if filter.get("order_date_gte"):
-                filter_data["order_date_gte"] = filter["order_date_gte"]
-            if filter.get("order_date_lte"):
-                filter_data["order_date_lte"] = filter["order_date_lte"]
-            if filter.get("customer_name"):
-                filter_data["customer_name"] = filter["customer_name"]
-            if filter.get("product_name"):
-                filter_data["product_name"] = filter["product_name"]
-            if filter.get("product_id"):
-                filter_data["product_id"] = filter["product_id"]
-
-        queryset = OrderFilter(data=filter_data, queryset=queryset).qs
-
-        if order_by:
-            queryset = queryset.order_by(*order_by)
-
-        return queryset
+    def resolve_all_customers(self, info):
+        return Customer.objects.all()
