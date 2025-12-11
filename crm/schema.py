@@ -2,10 +2,13 @@ import re
 from decimal import Decimal, InvalidOperation
 
 import graphene
+from graphene import relay
 from graphene_django import DjangoObjectType
+from graphene_django.filter import DjangoFilterConnectionField
 from django.utils import timezone
 
 from .models import Customer, Product, Order
+from .filters import CustomerFilter, ProductFilter, OrderFilter
 
 
 PHONE_REGEX = re.compile(r"^(\+?\d[\d\-]{6,20})$")
@@ -27,6 +30,27 @@ class OrderType(DjangoObjectType):
     class Meta:
         model = Order
         fields = ("id", "customer", "products", "total_amount", "order_date")
+
+
+class CustomerNode(DjangoObjectType):
+    class Meta:
+        model = Customer
+        interfaces = (relay.Node,)
+        filterset_class = CustomerFilter
+
+
+class ProductNode(DjangoObjectType):
+    class Meta:
+        model = Product
+        interfaces = (relay.Node,)
+        filterset_class = ProductFilter
+
+
+class OrderNode(DjangoObjectType):
+    class Meta:
+        model = Order
+        interfaces = (relay.Node,)
+        filterset_class = OrderFilter
 
 
 class CustomerInput(graphene.InputObjectType):
@@ -204,6 +228,9 @@ class Mutation(graphene.ObjectType):
 
 class Query(graphene.ObjectType):
     all_customers = graphene.List(CustomerType)
+    all_customers = DjangoFilterConnectionField(CustomerNode)
+    all_products = DjangoFilterConnectionField(ProductNode)
+    all_orders = DjangoFilterConnectionField(OrderNode)
 
-    def resolve_all_customers(self, info):
+    def resolve_all_customers(self, info, **kwargs):
         return Customer.objects.all()
