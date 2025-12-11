@@ -2,7 +2,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "change-this-secret-key"
+SECRET_KEY = "replace-this-with-a-secure-secret-key"
 
 DEBUG = True
 
@@ -31,7 +31,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "graphql_crm.urls"
+ROOT_URLCONF = "alx_backend_graphql.urls"
 
 TEMPLATES = [
     {
@@ -49,8 +49,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "graphql_crm.wsgi.application"
-
+WSGI_APPLICATION = "alx_backend_graphql.wsgi.application"
 
 DATABASES = {
     "default": {
@@ -58,7 +57,6 @@ DATABASES = {
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -75,7 +73,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "UTC"
@@ -84,12 +81,10 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-
 GRAPHENE = {
-    "SCHEMA": "graphql_crm.schema.schema",
+    "SCHEMA": "alx_backend_graphql.schema.schema",
 }
