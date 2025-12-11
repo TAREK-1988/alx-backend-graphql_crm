@@ -1,11 +1,12 @@
 import graphene
+from crm.schema import Query as CRMQuery
 
 
-class Query(graphene.ObjectType):
-    hello = graphene.String(description="Simple hello field.")
-
-    def resolve_hello(self, info) -> str:
-        return "Hello, GraphQL!"
+class Query(CRMQuery, graphene.ObjectType):
+    """
+    Root Query for the GraphQL API.
+    """
+    pass
 
 
 schema = graphene.Schema(query=Query)
