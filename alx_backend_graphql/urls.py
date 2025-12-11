@@ -10,7 +10,7 @@ urlpatterns = [
         "graphql",
         csrf_exempt(
             GraphQLView.as_view(
-                graphiql=True,  # Enable GraphiQL for interactive exploration
+                graphiql=True,
             )
         ),
         name="graphql-endpoint",
