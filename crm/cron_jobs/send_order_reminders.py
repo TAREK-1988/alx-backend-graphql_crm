@@ -8,7 +8,7 @@ GRAPHQL_ENDPOINT = "http://localhost:8000/graphql"
 LOG_FILE = "/tmp/order_reminders_log.txt"
 
 
-def main() -> None:
+def main():
     now = datetime.now(timezone.utc)
     since = now - timedelta(days=7)
 
