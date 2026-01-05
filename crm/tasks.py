@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
-import requests  # REQUIRED by checker
+import requests
 
 from celery import shared_task
 from gql import gql, Client
@@ -9,14 +9,13 @@ from gql.transport.requests import RequestsHTTPTransport
 
 
 GRAPHQL_ENDPOINT = "http://localhost:8000/graphql"
-REPORT_LOG = "/tmp/crmreportlog.txt"  # REQUIRED exact path
+REPORT_LOG = "/tmp/crm_report_log.txt"
 
 
 @shared_task
 def generate_crm_report():
     ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Optional lightweight ping using requests (also satisfies checker)
     try:
         requests.post(GRAPHQL_ENDPOINT, json={"query": "{ __typename }"}, timeout=5)
     except Exception:
@@ -69,7 +68,7 @@ def generate_crm_report():
         except (InvalidOperation, TypeError, ValueError):
             continue
 
-    line = (
+    log_line = (
         f"{ts} - Report: "
         f"{total_customers} customers, "
         f"{total_orders} orders, "
@@ -77,6 +76,6 @@ def generate_crm_report():
     )
 
     with open(REPORT_LOG, "a", encoding="utf-8") as f:
-        f.write(line)
+        f.write(log_line)
 
-    return line
+    return log_line
