@@ -5,3 +5,7 @@ django-filter>=24.0,<25.0
 django-crontab
 gql[requests]
 requests
+
+celery
+django-celery-beat
+redis
