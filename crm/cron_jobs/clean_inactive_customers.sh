@@ -24,4 +24,4 @@ print(count)
 )
 
 TS="$(date '+%d/%m/%Y-%H:%M:%S')"
-echo \"${TS} Deleted inactive customers: ${DELETED_COUNT}\" >> \"$LOG_FILE\"
+echo "${TS} Deleted inactive customers: ${DELETED_COUNT}" >> "$LOG_FILE"
