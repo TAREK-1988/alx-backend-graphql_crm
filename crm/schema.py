@@ -7,10 +7,7 @@ from graphene_django import DjangoObjectType
 from graphene_django.filter import DjangoFilterConnectionField
 from django.utils import timezone
 
-# IMPORTANT: Checker requires this exact line:
 from crm.models import Product
-
-# Other model imports (separate on purpose to satisfy checker)
 from crm.models import Customer, Order
 
 from .filters import CustomerFilter, ProductFilter, OrderFilter
@@ -91,13 +88,8 @@ class CreateCustomer(graphene.Mutation):
         if phone and not PHONE_REGEX.match(phone):
             raise Exception("Invalid phone number format.")
 
-        customer = Customer(
-            name=name,
-            email=email,
-            phone=phone,
-        )
+        customer = Customer(name=name, email=email, phone=phone)
         customer.save()
-
         return CreateCustomer(customer=customer)
 
 
@@ -134,10 +126,7 @@ class BulkCreateCustomers(graphene.Mutation):
             customer.save()
             created_customers.append(customer)
 
-        return BulkCreateCustomers(
-            customers=created_customers,
-            errors=errors,
-        )
+        return BulkCreateCustomers(customers=created_customers, errors=errors)
 
 
 class CreateProduct(graphene.Mutation):
@@ -165,13 +154,8 @@ class CreateProduct(graphene.Mutation):
         if errors:
             return CreateProduct(product=None, errors=errors)
 
-        product = Product(
-            name=input.name,
-            price=price_decimal,
-            stock=stock,
-        )
+        product = Product(name=input.name, price=price_decimal, stock=stock)
         product.save()
-
         return CreateProduct(product=product, errors=[])
 
 
@@ -213,11 +197,7 @@ class CreateOrder(graphene.Mutation):
         total_amount = sum((p.price for p in products), Decimal("0.00"))
         order_date = input.order_date or timezone.now()
 
-        order = Order(
-            customer=customer,
-            total_amount=total_amount,
-            order_date=order_date,
-        )
+        order = Order(customer=customer, total_amount=total_amount, order_date=order_date)
         order.save()
         order.products.set(products)
 
@@ -248,15 +228,19 @@ class Mutation(graphene.ObjectType):
     bulk_create_customers = BulkCreateCustomers.Field()
     create_product = CreateProduct.Field()
     create_order = CreateOrder.Field()
-
     update_low_stock_products = UpdateLowStockProducts.Field()
 
 
 class Query(graphene.ObjectType):
+    hello = graphene.String()
+
     all_customers = graphene.List(CustomerType)
     all_customers = DjangoFilterConnectionField(CustomerNode)
     all_products = DjangoFilterConnectionField(ProductNode)
     all_orders = DjangoFilterConnectionField(OrderNode)
+
+    def resolve_hello(self, info):
+        return "Hello, CRM!"
 
     def resolve_all_customers(self, info, **kwargs):
         return Customer.objects.all()
